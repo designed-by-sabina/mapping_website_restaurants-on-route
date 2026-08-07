@@ -1,1 +1,26 @@
 ::1 - - [07/Aug/2026 11:45:57] "GET /central_park_route.geojson HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:56:45] "GET /main.js HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:56:54] "GET /index.html HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:56:54] "GET /style.css HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:56:54] "GET /main.js HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:56:54] code 404, message File not found
+::1 - - [07/Aug/2026 11:56:54] "GET /favicon.ico HTTP/1.1" 404 -
+::1 - - [07/Aug/2026 11:57:25] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 11:57:43] "GET /central_park_route.geojson HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 11:57:52] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 11:58:26] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:00:02] "GET /index.html HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:00:02] "GET /style.css HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:00:03] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:00:21] "GET /all_restaurants.geojson HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 12:00:21] "GET /central_park_attractions_ordered.geojson HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 12:09:27] "GET /main.js HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 12:09:35] "GET /index.html HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:09:35] "GET /style.css HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:09:35] "GET /main.js HTTP/1.1" 200 -
+::1 - - [07/Aug/2026 12:10:10] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:10:34] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:12:04] "GET /main.js HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:12:34] "GET /central_park_route.geojson HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:12:34] "GET /all_restaurants.geojson HTTP/1.1" 304 -
+::1 - - [07/Aug/2026 12:12:34] "GET /central_park_attractions_ordered.geojson HTTP/1.1" 304 -

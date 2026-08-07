@@ -16,9 +16,6 @@ map.addControl(new maplibregl.NavigationControl());
 
 const SEARCH_RADIUS_METERS = 1609; // 1 mile
 
-// Bumped on every call so a slow response from an earlier point (e.g. from
-// mid-drag) can't land after a newer one and make the display jump back -
-// that's what was causing restaurants to "linger" while dragging.
 let queryRequestId = 0;
 
 async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
@@ -30,7 +27,7 @@ async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
     n: n,
   });
 
-  if (requestId !== queryRequestId) return; // a newer query has since been made - drop this one
+  if (requestId !== queryRequestId) return;
 
   if (error) {
     console.error("Error fetching nearest points:", error);
@@ -39,8 +36,6 @@ async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
 
   console.log(`Found ${data.length} inspections within ${n}m`);
 
-  // Reshape the rows returned by the RPC into a GeoJSON FeatureCollection
-  // that the map's "restaurants" source can display.
   const geojson = {
     type: "FeatureCollection",
     features: data.map((row) => ({
@@ -58,12 +53,6 @@ async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
     })),
   };
 
-  // Supabase/PostgREST caps RPC results at 1000 rows, so in dense areas the
-  // farthest restaurant actually returned can be well short of the full
-  // search radius (e.g. ~500m instead of 1609m). Scaling the size
-  // interpolation against SEARCH_RADIUS_METERS in that case barely moves
-  // the radius at all. Instead, scale against the farthest point actually
-  // returned for *this* click, so the size gradient is always visible.
   const maxDist = data.length ? Math.max(...data.map((row) => row.dist_meters)) : n;
   map.setPaintProperty("nearby-restaurants-layer", "circle-radius", [
     "interpolate",
@@ -78,7 +67,7 @@ async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
   map.getSource("nearby-restaurants").setData(geojson);
 }
 
-let routeLine = null; // turf LineString feature, filled in once central_park_route.geojson loads
+let routeLine = null; /
 let routeMarker = null;
 let routeReadoutLabel = null;
 let routeReadoutDist = null;
@@ -94,9 +83,7 @@ function updateRouteReadout(distAlongMeters, totalMeters) {
     `${metersToMiles(distAlongMeters).toFixed(2)} mi into the ${metersToMiles(totalMeters).toFixed(2)} mi route`;
 }
 
-// Snap a raw [lng, lat] to the nearest point on the Central Park route and
-// move the marker there. Cheap and synchronous, so this can run on every
-// pointer-move frame for a smooth slide.
+
 function snapMarkerToRoute(lngLat) {
   if (!routeLine) return null;
 
@@ -112,9 +99,7 @@ function snapMarkerToRoute(lngLat) {
   return snappedCoords;
 }
 
-// The Supabase round-trip is the slow part, so it's throttled separately
-// from marker movement - firing it on every frame during a fast drag is
-// what made the restaurant bubbles lag behind and flicker between points.
+
 let proximityQueryTimer = null;
 const PROXIMITY_QUERY_THROTTLE_MS = 120;
 
@@ -129,19 +114,13 @@ function queueProximityQuery(coords, immediate = false) {
   }, PROXIMITY_QUERY_THROTTLE_MS);
 }
 
-// Move the marker and (throttled) re-run the proximity query for that spot -
-// this is what makes "drag the point" behave like "click the point".
 function snapMarkerAndQuery(lngLat, immediate = false) {
   const snappedCoords = snapMarkerToRoute(lngLat);
   if (!snappedCoords) return;
   queueProximityQuery(snappedCoords, immediate);
 }
 
-// The marker itself is never draggable - it always sits at whatever point
-// snapMarkerAndQuery() puts it at, so it can never leave the route line.
-// This drives it like a slider: while the mouse/touch is down on it, we
-// read the cursor's map position on every move and re-snap the marker to
-// the nearest point on the route, instead of letting it follow the cursor.
+
 function enableRouteMarkerSlider() {
   const el = routeMarker.getElement();
   el.style.cursor = "grab";
@@ -210,8 +189,7 @@ map.on("load", () => {
     },
   });
 
-  // Highlight layer: only the restaurants returned by the last click query,
-  // drawn on top of the grey base layer so they stand out.
+  
   map.addSource("nearby-restaurants", {
     type: "geojson",
     data: { type: "FeatureCollection", features: [] },
@@ -236,9 +214,7 @@ map.on("load", () => {
         "#33a02c",
         /* other */ "#999999",
       ],
-      // Data-driven radius by distance from the clicked point -
-      // closer restaurants are drawn bigger, so the map encodes both
-      // the seating-choice variable (color) and distance (size) at once.
+      
       "circle-radius": [
         "interpolate",
         ["linear"],
