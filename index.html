@@ -7,6 +7,7 @@
     <script src="https://unpkg.com/maplibre-gl@^5.6.1/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@^5.6.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
     <link href="style.css" rel="stylesheet" />
   </head>
   <body>
@@ -29,6 +30,15 @@
       </div>
       <p class="legend-hint">Every restaurant inspection is shown as a grey dot. Click anywhere on the map to color and size the nearest ones by seating choice and distance.</p>
       <p class="legend-hint">Click a colored bubble to see that restaurant's name, seating choice, and distance from your last click.</p>
+      <hr />
+      <h3>Central Park Route</h3>
+      <div class="legend-row"><span class="swatch swatch-square" style="background:#e31a1c"></span>Attractions walking route</div>
+      <p class="legend-hint">Drag the black route marker along the Central Park path to see restaurant proximity at that point.</p>
+    </div>
+
+    <div id="route-readout">
+      <div id="route-readout-label">Drag the marker onto the route</div>
+      <div id="route-readout-dist"></div>
     </div>
 
     <script src="main.js"></script>

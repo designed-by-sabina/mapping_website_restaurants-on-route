@@ -70,6 +70,40 @@ async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
   map.getSource("nearby-restaurants").setData(geojson);
 }
 
+let routeLine = null; // turf LineString feature, filled in once central_park_route.geojson loads
+let routeMarker = null;
+let routeReadoutLabel = null;
+let routeReadoutDist = null;
+
+function metersToMiles(m) {
+  return m / 1609.34;
+}
+
+function updateRouteReadout(distAlongMeters, totalMeters) {
+  if (!routeReadoutLabel || !routeReadoutDist) return;
+  routeReadoutLabel.textContent = "On Central Park route";
+  routeReadoutDist.textContent =
+    `${metersToMiles(distAlongMeters).toFixed(2)} mi into the ${metersToMiles(totalMeters).toFixed(2)} mi route`;
+}
+
+// Snap a raw [lng, lat] to the nearest point on the Central Park route,
+// move the marker there, and re-run the proximity query for that spot -
+// this is what makes "drag the point" behave like "click the point".
+function snapMarkerAndQuery(lngLat) {
+  if (!routeLine) return;
+
+  const snapped = turf.nearestPointOnLine(routeLine, [lngLat.lng, lngLat.lat]);
+  const snappedCoords = snapped.geometry.coordinates;
+
+  routeMarker.setLngLat(snappedCoords);
+
+  const totalMeters = turf.length(routeLine, { units: "kilometers" }) * 1000;
+  const distAlongMeters = snapped.properties.location * 1000; // km -> m
+  updateRouteReadout(distAlongMeters, totalMeters);
+
+  queryWithinDistance(snappedCoords, SEARCH_RADIUS_METERS);
+}
+
 map.on("load", () => {
 
   map.addSource("all-restaurants", {
@@ -164,4 +198,59 @@ map.on("load", () => {
 
   map.on("mouseenter", "nearby-restaurants-layer", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "nearby-restaurants-layer", () => (map.getCanvas().style.cursor = ""));
+
+  // --- Central Park attractions route + draggable proximity point ---
+
+  map.addSource("central-park-route", {
+    type: "geojson",
+    data: "central_park_route.geojson",
+  });
+
+  map.addLayer({
+    id: "central-park-route-layer",
+    type: "line",
+    source: "central-park-route",
+    paint: {
+      "line-color": "#e31a1c",
+      "line-width": 3,
+      "line-opacity": 0.85,
+    },
+  });
+
+  map.addSource("central-park-attractions", {
+    type: "geojson",
+    data: "central_park_attractions_ordered.geojson",
+  });
+
+  map.addLayer({
+    id: "central-park-attractions-layer",
+    type: "circle",
+    source: "central-park-attractions",
+    paint: {
+      "circle-radius": 4,
+      "circle-color": "#ffffff",
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#e31a1c",
+    },
+  });
+
+  routeReadoutLabel = document.getElementById("route-readout-label");
+  routeReadoutDist = document.getElementById("route-readout-dist");
+
+  fetch("central_park_route.geojson")
+    .then((res) => res.json())
+    .then((geojson) => {
+      routeLine = geojson.features[0];
+
+      const startCoords = routeLine.geometry.coordinates[0];
+
+      routeMarker = new maplibregl.Marker({ color: "#111", draggable: true })
+        .setLngLat(startCoords)
+        .addTo(map);
+
+      routeMarker.on("drag", () => snapMarkerAndQuery(routeMarker.getLngLat()));
+
+      // Place it on the route and run the first proximity query immediately.
+      snapMarkerAndQuery({ lng: startCoords[0], lat: startCoords[1] });
+    });
 });
