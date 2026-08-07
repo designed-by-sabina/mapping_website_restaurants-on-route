@@ -14,7 +14,6 @@ var map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl());
 
-let clickMarker = null;
 const SEARCH_RADIUS_METERS = 1609; // 1 mile
 
 // Bumped on every call so a slow response from an earlier point (e.g. from
@@ -258,20 +257,6 @@ map.on("load", () => {
   });
 
 
-  map.on("click", (e) => {
-    const clickedRestaurant = map.queryRenderedFeatures(e.point, {
-      layers: ["nearby-restaurants-layer"],
-    });
-    if (clickedRestaurant.length > 0) return;
-
-    const point = [e.lngLat.lng, e.lngLat.lat];
-
-    if (clickMarker) clickMarker.remove();
-    clickMarker = new maplibregl.Marker({ color: "#111" }).setLngLat(point).addTo(map);
-
-    queryWithinDistance(point, SEARCH_RADIUS_METERS);
-  });
-
   // Clicking a highlighted (colored) restaurant point shows its details.
   map.on("click", "nearby-restaurants-layer", (e) => {
     const coordinates = e.features[0].geometry.coordinates.slice();
@@ -282,7 +267,7 @@ map.on("load", () => {
       .setHTML(
         `<strong>${name}</strong><br>` +
           `Seating: ${seating_choice}<br>` +
-          `${dist_miles.toFixed(2)} mi from click`
+          `${dist_miles.toFixed(2)} mi from route marker`
       )
       .addTo(map);
   });
