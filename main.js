@@ -17,12 +17,21 @@ map.addControl(new maplibregl.NavigationControl());
 let clickMarker = null;
 const SEARCH_RADIUS_METERS = 1609; // 1 mile
 
+// Bumped on every call so a slow response from an earlier point (e.g. from
+// mid-drag) can't land after a newer one and make the display jump back -
+// that's what was causing restaurants to "linger" while dragging.
+let queryRequestId = 0;
+
 async function queryWithinDistance(point, n = SEARCH_RADIUS_METERS) {
+  const requestId = ++queryRequestId;
+
   const { data, error } = await supabaseClient.rpc("find_nearest_n_restaurants", {
     lat: point[1],
     lon: point[0],
     n: n,
   });
+
+  if (requestId !== queryRequestId) return; // a newer query has since been made - drop this one
 
   if (error) {
     console.error("Error fetching nearest points:", error);
@@ -86,11 +95,11 @@ function updateRouteReadout(distAlongMeters, totalMeters) {
     `${metersToMiles(distAlongMeters).toFixed(2)} mi into the ${metersToMiles(totalMeters).toFixed(2)} mi route`;
 }
 
-// Snap a raw [lng, lat] to the nearest point on the Central Park route,
-// move the marker there, and re-run the proximity query for that spot -
-// this is what makes "drag the point" behave like "click the point".
-function snapMarkerAndQuery(lngLat) {
-  if (!routeLine) return;
+// Snap a raw [lng, lat] to the nearest point on the Central Park route and
+// move the marker there. Cheap and synchronous, so this can run on every
+// pointer-move frame for a smooth slide.
+function snapMarkerToRoute(lngLat) {
+  if (!routeLine) return null;
 
   const snapped = turf.nearestPointOnLine(routeLine, [lngLat.lng, lngLat.lat]);
   const snappedCoords = snapped.geometry.coordinates;
@@ -101,7 +110,32 @@ function snapMarkerAndQuery(lngLat) {
   const distAlongMeters = snapped.properties.location * 1000; // km -> m
   updateRouteReadout(distAlongMeters, totalMeters);
 
-  queryWithinDistance(snappedCoords, SEARCH_RADIUS_METERS);
+  return snappedCoords;
+}
+
+// The Supabase round-trip is the slow part, so it's throttled separately
+// from marker movement - firing it on every frame during a fast drag is
+// what made the restaurant bubbles lag behind and flicker between points.
+let proximityQueryTimer = null;
+const PROXIMITY_QUERY_THROTTLE_MS = 120;
+
+function queueProximityQuery(coords, immediate = false) {
+  clearTimeout(proximityQueryTimer);
+  if (immediate) {
+    queryWithinDistance(coords, SEARCH_RADIUS_METERS);
+    return;
+  }
+  proximityQueryTimer = setTimeout(() => {
+    queryWithinDistance(coords, SEARCH_RADIUS_METERS);
+  }, PROXIMITY_QUERY_THROTTLE_MS);
+}
+
+// Move the marker and (throttled) re-run the proximity query for that spot -
+// this is what makes "drag the point" behave like "click the point".
+function snapMarkerAndQuery(lngLat, immediate = false) {
+  const snappedCoords = snapMarkerToRoute(lngLat);
+  if (!snappedCoords) return;
+  queueProximityQuery(snappedCoords, immediate);
 }
 
 // The marker itself is never draggable - it always sits at whatever point
@@ -115,13 +149,16 @@ function enableRouteMarkerSlider() {
 
   let dragging = false;
   let rafPending = false;
+  let lastLngLat = null;
 
   const onMove = (e) => {
-    if (!dragging || rafPending) return;
+    if (!dragging) return;
+    lastLngLat = e.lngLat;
+    if (rafPending) return;
     rafPending = true;
     requestAnimationFrame(() => {
       rafPending = false;
-      snapMarkerAndQuery(e.lngLat);
+      if (dragging) snapMarkerAndQuery(lastLngLat);
     });
   };
 
@@ -130,6 +167,9 @@ function enableRouteMarkerSlider() {
     dragging = false;
     el.style.cursor = "grab";
     map.dragPan.enable();
+    // Make sure the very last position always gets queried, even if it
+    // landed inside the throttle window and would otherwise be skipped.
+    if (lastLngLat) snapMarkerAndQuery(lastLngLat, true);
     map.off("mousemove", onMove);
     map.off("touchmove", onMove);
     map.off("mouseup", onUp);
@@ -212,6 +252,8 @@ map.on("load", () => {
       "circle-opacity": 0.9,
       "circle-stroke-width": 1.5,
       "circle-stroke-color": "black",
+      "circle-radius-transition": { duration: 150, delay: 0 },
+      "circle-opacity-transition": { duration: 150, delay: 0 },
     },
   });
 
@@ -300,6 +342,6 @@ map.on("load", () => {
       enableRouteMarkerSlider();
 
       // Place it on the route and run the first proximity query immediately.
-      snapMarkerAndQuery({ lng: startCoords[0], lat: startCoords[1] });
+      snapMarkerAndQuery({ lng: startCoords[0], lat: startCoords[1] }, true);
     });
 });
