@@ -104,6 +104,55 @@ function snapMarkerAndQuery(lngLat) {
   queryWithinDistance(snappedCoords, SEARCH_RADIUS_METERS);
 }
 
+// The marker itself is never draggable - it always sits at whatever point
+// snapMarkerAndQuery() puts it at, so it can never leave the route line.
+// This drives it like a slider: while the mouse/touch is down on it, we
+// read the cursor's map position on every move and re-snap the marker to
+// the nearest point on the route, instead of letting it follow the cursor.
+function enableRouteMarkerSlider() {
+  const el = routeMarker.getElement();
+  el.style.cursor = "grab";
+
+  let dragging = false;
+  let rafPending = false;
+
+  const onMove = (e) => {
+    if (!dragging || rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      snapMarkerAndQuery(e.lngLat);
+    });
+  };
+
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.cursor = "grab";
+    map.dragPan.enable();
+    map.off("mousemove", onMove);
+    map.off("touchmove", onMove);
+    map.off("mouseup", onUp);
+    map.off("touchend", onUp);
+    window.removeEventListener("mouseup", onUp);
+  };
+
+  const onDown = (e) => {
+    e.preventDefault();
+    dragging = true;
+    el.style.cursor = "grabbing";
+    map.dragPan.disable(); // keep the map still while sliding the point
+    map.on("mousemove", onMove);
+    map.on("touchmove", onMove);
+    map.on("mouseup", onUp);
+    map.on("touchend", onUp);
+    window.addEventListener("mouseup", onUp); // catch release outside the canvas
+  };
+
+  el.addEventListener("mousedown", onDown);
+  el.addEventListener("touchstart", onDown, { passive: false });
+}
+
 map.on("load", () => {
 
   map.addSource("all-restaurants", {
@@ -244,11 +293,11 @@ map.on("load", () => {
 
       const startCoords = routeLine.geometry.coordinates[0];
 
-      routeMarker = new maplibregl.Marker({ color: "#111", draggable: true })
+      routeMarker = new maplibregl.Marker({ color: "#111", draggable: false })
         .setLngLat(startCoords)
         .addTo(map);
 
-      routeMarker.on("drag", () => snapMarkerAndQuery(routeMarker.getLngLat()));
+      enableRouteMarkerSlider();
 
       // Place it on the route and run the first proximity query immediately.
       snapMarkerAndQuery({ lng: startCoords[0], lat: startCoords[1] });
